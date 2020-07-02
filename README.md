@@ -19,4 +19,6 @@ To start dev server
 npm start
 ```
 
+[TypeScript in Webpack](https://webpack.js.org/guides/typescript/)
+
 
