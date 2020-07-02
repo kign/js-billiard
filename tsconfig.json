@@ -1,0 +1,19 @@
+{
+   "compilerOptions": {
+        "module": "es6",
+        "target": "es6",
+        "strict": true,
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "./js/",
+        // This is necessery to avoid parsing node_modules/@types
+        // (this fails in multiple packages)
+        "types": []
+    },
+    "include": [
+        "src/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
