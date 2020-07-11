@@ -21,4 +21,4 @@ npm start
 
 [TypeScript in Webpack](https://webpack.js.org/guides/typescript/)
 
-
+[HtmlWebpackPlugin templates](https://github.com/jantimon/html-webpack-plugin#writing-your-own-templates)

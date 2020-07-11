@@ -1,3 +1,3 @@
-import * as draw from './draw';
+import * as init from './init';
 
-draw.init ();
+init.init ();

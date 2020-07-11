@@ -1,34 +1,52 @@
-import {html} from './html';
+import { app, Geom } from './app';
 
-export function init () {
-	const ctx = html.canvas.getContext('2d')!;
-	html.canvas.width = window.innerWidth - 20;
+export function draw_border(ctx: CanvasRenderingContext2D) {
+	const g: Geom = app.g!;
 
-	const W = html.canvas.getBoundingClientRect().width;
-	const H = html.canvas.height;
+	ctx.strokeStyle = "#101080";
+	ctx.setLineDash([]);
+	ctx.beginPath();
+	ctx.moveTo(g.offset, g.round + g.offset);
+	ctx.lineTo(g.offset, g.H - g.round - g.offset);
+	ctx.moveTo(g.offset + g.round, g.H - g.offset);
+	if (g.middle) {
+		ctx.lineTo(g.W / 2 - g.round, g.H - g.offset);
+		ctx.moveTo(g.W / 2 + g.round, g.H - g.offset);
+	}
+	ctx.lineTo(g.W - g.offset - g.round, g.H - g.offset);
+	ctx.moveTo(g.W - g.offset, g.H - g.offset - g.round);
+	ctx.lineTo(g.W - g.offset, g.offset + g.round);
+	ctx.moveTo(g.W - g.offset - g.round, g.offset);
+	if (g.middle) {
+		ctx.lineTo(g.W / 2 + g.round, g.offset);
+		ctx.moveTo(g.W / 2 - g.round, g.offset);
+	}
+	ctx.lineTo(g.offset + g.round, g.offset);
+	ctx.stroke();
 
-	const o = {
-		round: 50,
-		offset: 10,
-		middle: true
-	};
+	ctx.setLineDash([2, 3]);
+	ctx.beginPath();
+	ctx.moveTo(g.offset, g.H - g.round - g.offset);
+	ctx.arcTo(g.offset + g.round, g.H - g.offset - g.round,
+		g.offset + g.round, g.H - g.offset, g.round);
+	if (g.middle) {
+		ctx.moveTo(g.W / 2 - g.round, g.H - g.offset);
+		ctx.arc(g.W / 2, g.H - g.offset, g.round, Math.PI, 2 * Math.PI);
+	}
+	ctx.moveTo(g.W - g.offset - g.round, g.H - g.offset);
+	ctx.arcTo(g.W - g.offset - g.round, g.H - g.offset - g.round,
+		g.W - g.offset, g.H - g.offset - g.round, g.round);
+	ctx.moveTo(g.W - g.offset, g.offset + g.round);
+	ctx.arcTo(g.W - g.offset - g.round, g.offset + g.round,
+		g.W - g.offset - g.round, g.offset, g.round);
+	if (g.middle) {
+		ctx.moveTo(g.W / 2 + g.round, g.offset);
+		ctx.arc(g.W / 2, g.offset, g.round, 0, Math.PI);
+	}
+	ctx.moveTo(g.offset + g.round, g.offset);
+	ctx.arcTo(g.offset + g.round, g.offset + g.round,
+		g.offset, g.offset + g.round, g.round);
+	ctx.stroke();
+	
 
-	ctx.strokeStyle = "blue";
-
-	ctx.beginPath();  
-  	ctx.moveTo(o.offset, o.round + o.offset);
-	ctx.lineTo(o.offset, H - o.round - o.offset);
-	ctx.arcTo(o.offset + o.round, H - o.offset - o.round, 
-		o.offset + o.round, H - o.offset, o.round);
-	ctx.lineTo(W - o.offset - o.round, H - o.offset);
-	ctx.arcTo(W - o.offset - o.round, H - o.offset - o.round,
-		W - o.offset, H - o.offset - o.round, o.round);
-	ctx.lineTo(W - o.offset, o.offset + o.round);
-	ctx.arcTo(W - o.offset - o.round, o.offset + o.round,
-		W - o.offset - o.round, o.offset, o.round);
-	ctx.lineTo(o.offset + o.round, o.offset);
-	ctx.arcTo(o.offset + o.round, o.offset + o.round, 
-		o.offset, o.offset + o.round, o.round);
-
-  	ctx.stroke();
 }
