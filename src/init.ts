@@ -1,15 +1,16 @@
-import {app, Geom} from './app';
+import {App} from './app';
 import {html} from './html';
-import * as draw from './draw';
+import * as canvas from './canvas';
 
 const log_resize: boolean = false;
 
-export function init() {
+export function init(app: App) {
     const ctx = html.canvas.getContext('2d')!;
     html.canvas.width = window.innerWidth - 20;
 
-    app.g = make_geom ();
-    draw.draw_border(ctx);
+    app.update_geometry(make_geom ());
+    canvas.draw_border(app, ctx);
+    app.draw_balls();
 
     const hr = html.slider.firstElementChild as HTMLElement;
     html.slider.addEventListener("mouseover", event => {
@@ -51,9 +52,9 @@ export function init() {
             html.slider.style.top = old_top;
 
             html.canvas.height += (evt.screenY - event.screenY);
-            app.g = make_geom ();
+            app.update_geometry(make_geom());
 
-            draw.draw_border(ctx);
+            canvas.draw_border(app, ctx);
         };
 
         document.addEventListener("mousemove", on_move);
@@ -63,7 +64,7 @@ export function init() {
     document.body.style.cursor = "row-resize";
 }
 
-function make_geom(): Geom {
+function make_geom() {
     const w = html.canvas.getBoundingClientRect().width;
     const h = html.canvas.height;
     return {

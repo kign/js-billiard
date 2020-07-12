@@ -6,8 +6,16 @@ export interface Geom {
     readonly middle: boolean;
 }
 
-interface App {
-    g?: Geom;
+export interface Ball {
+    readonly x: number;
+    readonly y: number;
+    readonly r: number;
+    readonly m: number;
+    readonly c: string;
 }
 
-export const app: App = {};
+export interface App {
+    readonly g?: Geom;
+    update_geometry(g: Geom):void;
+    draw_balls(): void;
+}

@@ -1,7 +1,7 @@
-import { app, Geom } from './app';
+import {App, Ball} from './app';
 
-export function draw_border(ctx: CanvasRenderingContext2D) {
-	const g: Geom = app.g!;
+export function draw_border(app: App, ctx: CanvasRenderingContext2D) {
+	const g = app.g!;
 
 	ctx.strokeStyle = "#101080";
 	ctx.setLineDash([]);
@@ -47,6 +47,11 @@ export function draw_border(ctx: CanvasRenderingContext2D) {
 	ctx.arcTo(g.offset + g.round, g.offset + g.round,
 		g.offset, g.offset + g.round, g.round);
 	ctx.stroke();
-	
+}
 
+export function draw_ball(ctx: CanvasRenderingContext2D, b: Ball) :void {
+	ctx.fillStyle = b.c;
+	ctx.beginPath();
+	ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
+	ctx.fill();
 }
