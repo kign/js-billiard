@@ -50,7 +50,7 @@ export function draw_border(app: App, ctx: CanvasRenderingContext2D) {
 }
 
 export function draw_ball(ctx: CanvasRenderingContext2D, b: Ball) :void {
-	ctx.fillStyle = b.c;
+	ctx.fillStyle = b.c.string();
 	ctx.beginPath();
 	ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
 	ctx.fill();

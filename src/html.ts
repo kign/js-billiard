@@ -8,4 +8,4 @@ export const html : htmlElements = {
 	slider: document.getElementById('slider')!
 }
 
-console.log("Loaded html.ts @" + (new Date()));
+//console.log("Loaded html.ts @" + (new Date()));

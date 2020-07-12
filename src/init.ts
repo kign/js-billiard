@@ -31,6 +31,9 @@ export function init(app: App) {
 
         const old_pos = html.slider.style.position;
         const old_top = html.slider.style.top;
+        const old_cursor = document.body.style.cursor;
+
+        document.body.style.cursor = "row-resize";
 
         const on_move = (evt: MouseEvent) => {
             if (log_resize)
@@ -50,18 +53,17 @@ export function init(app: App) {
 
             html.slider.style.position = old_pos;
             html.slider.style.top = old_top;
+            document.body.style.cursor = old_cursor;
 
             html.canvas.height += (evt.screenY - event.screenY);
             app.update_geometry(make_geom());
-
             canvas.draw_border(app, ctx);
+
         };
 
         document.addEventListener("mousemove", on_move);
         document.addEventListener("mouseup", on_up);
     });
-
-    document.body.style.cursor = "row-resize";
 }
 
 function make_geom() {

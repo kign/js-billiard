@@ -1,3 +1,5 @@
+import * as Color from 'color';
+
 export interface Geom {
     readonly W: number;
     readonly H: number;
@@ -11,7 +13,7 @@ export interface Ball {
     readonly y: number;
     readonly r: number;
     readonly m: number;
-    readonly c: string;
+    readonly c: Color;
 }
 
 export interface App {
