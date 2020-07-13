@@ -20,4 +20,6 @@ export interface App {
     readonly g?: Geom;
     update_geometry(g: Geom):void;
     draw_balls(): void;
+    cue(): Ball;
+    run(vx: number, vy:number) :void;
 }

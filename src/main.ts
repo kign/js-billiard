@@ -13,14 +13,22 @@ class Application implements App {
 
     public update_geometry(g: Geom) {
         this.g = g;
+        this.balls = position_balls(g.W, g.H);
     }
 
     public draw_balls(): void {
-        this.balls = position_balls(this.g!.W, this.g!.H);
         const ctx = html.canvas.getContext('2d')!;
 
         for (let ii = 0; ii < this.balls!.length; ii ++)
-            canvas.draw_ball(ctx, this.balls![ii]);   
+            canvas.draw_ball(this.balls![ii], ctx);   
+    }
+
+    public cue() {
+        return this.balls![0];
+    }
+
+    public run(vx: number, vy: number): void {
+        console.log("Initiating run(" + vx + "," + vy + ")");
     }
 }
 
@@ -40,7 +48,7 @@ function position_balls(W: number, H: number): Ball[] {
     const c2 = Color.rgb(0,200,0);
     const x3 = x2;
     const y3 = y1 + 1/2*side;
-    const c3 = Color.rgb(0,0,200);
+    const c3 = Color.rgb(0,0,250);
 
     const m2 = (v1:number, c1:Color, v2:number, c2:Color) => Color.rgb(
         v1 * c1.red()   + v2 * c2.red(),
@@ -78,4 +86,5 @@ function position_balls(W: number, H: number): Ball[] {
 const app = new Application();
 
 init.init (app);
+canvas.init(app);
 
