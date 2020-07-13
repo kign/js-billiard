@@ -64,6 +64,7 @@ export function init(app: App) {
         document.addEventListener("mousemove", on_move);
         document.addEventListener("mouseup", on_up);
     });
+    load_wasm ();
 }
 
 function make_geom() {
@@ -76,4 +77,26 @@ function make_geom() {
         offset: 10,
         middle: h < 0.75 * w
     };
+}
+
+interface Iwasm {
+    add_integers(a: number, b: number): number;
+}
+
+function load_wasm() {
+    const importObject = {
+        // some black magic
+        wasi_unstable: { 
+            proc_exit: arg => console.log("proc_exit", arg),
+            fd_write: arg => console.log("fd_write", arg)
+        },
+        imports: { imported_func: arg => console.log(arg) }
+    };
+
+    WebAssembly.instantiateStreaming(fetch('animation.wasm'), importObject)
+        .then(m => {
+            const mod = m.instance.exports as unknown as Iwasm;
+            console.log("12 + 17 =", mod.add_integers(12, 17));
+        });
+
 }
