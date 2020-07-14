@@ -37,7 +37,8 @@ export function init (app: App):void {
 		else {
 			const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
 			if (ch != cue_highlighted) {
-				draw_ball(b, undefined, ch?hcol:undefined);
+				const ctx = html.canvas.getContext('2d')!;
+				draw_ball(b, ctx, ch?hcol:undefined);
 				cue_highlighted = ch;
 			}
 		}
@@ -128,8 +129,7 @@ export function draw_border(app: App, ctx: CanvasRenderingContext2D) {
 	ctx.stroke();
 }
 
-export function draw_ball(b: Ball, _ctx?: CanvasRenderingContext2D, c?: Color) :void {
-	const ctx = _ctx || html.canvas.getContext('2d')!;
+export function draw_ball(b: Ball, ctx: CanvasRenderingContext2D, c?: Color) :void {
 	ctx.fillStyle = (c || b.c).string();
 	ctx.beginPath();
 	ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
