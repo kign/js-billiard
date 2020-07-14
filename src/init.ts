@@ -83,14 +83,25 @@ interface Iwasm {
     add_integers(a: number, b: number): number;
 }
 
+
 function load_wasm() {
+    let wasm_log_buf:Array<string> = [];
     const importObject = {
+        env: {
+            js_log_: (arg : number) => {
+                if (arg == 0) {
+                    console.log("zig:", wasm_log_buf.join(''));
+                    wasm_log_buf = [];
+                }
+                else
+                    wasm_log_buf.push(String.fromCharCode(arg));
+            }
+        },
         // some black magic
-        wasi_unstable: { 
+        wasi_unstable: {
             proc_exit: arg => console.log("proc_exit", arg),
             fd_write: arg => console.log("fd_write", arg)
-        },
-        imports: { imported_func: arg => console.log(arg) }
+        }
     };
 
     WebAssembly.instantiateStreaming(fetch('animation.wasm'), importObject)
