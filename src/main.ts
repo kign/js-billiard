@@ -1,14 +1,44 @@
 import * as Color from 'color';
-import {App, Geom, Ball} from './app';
+import {App, Geom, Ball, Iwasm} from './app';
 import * as init from './init';
 import { html } from './html';
 import * as canvas from './canvas';
 
 class Application implements App {
     public g?: Geom;
+    public wasm?: Iwasm;
     private balls?: Ball[];
 
     public constructor() {
+        this.load_wasm ();
+    }
+
+    public load_wasm() :void {
+        let wasm_log_buf: Array<string> = [];
+        const importObject = {
+            env: {
+                js_log_: (arg: number) => {
+                    if (arg == 0) {
+                        console.log("zig:", wasm_log_buf.join(''));
+                        wasm_log_buf = [];
+                    }
+                    else
+                        wasm_log_buf.push(String.fromCharCode(arg));
+                }
+            },
+            // some black magic
+            wasi_unstable: {
+                proc_exit: arg => console.log("proc_exit", arg),
+                fd_write: arg => console.log("fd_write", arg)
+            }
+        };
+
+        const wasm_src = 'animation.wasm';
+        WebAssembly.instantiateStreaming(fetch(wasm_src), importObject)
+            .then(m => {
+                this.wasm = m.instance.exports as unknown as Iwasm;
+                console.log("Loaded", wasm_src);
+            });
     }
 
     public update_geometry(g: Geom) {
@@ -28,6 +58,7 @@ class Application implements App {
     }
 
     public run(vx: number, vy: number): void {
+        console.log("12 + 17 =", this.wasm!.add_integers(12, 17));
         console.log("Initiating run(" + vx + "," + vy + ")");
     }
 }

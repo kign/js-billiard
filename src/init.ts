@@ -1,4 +1,4 @@
-import {App} from './app';
+import {App, Iwasm} from './app';
 import {html} from './html';
 import * as canvas from './canvas';
 
@@ -64,7 +64,6 @@ export function init(app: App) {
         document.addEventListener("mousemove", on_move);
         document.addEventListener("mouseup", on_up);
     });
-    load_wasm ();
 }
 
 function make_geom() {
@@ -77,37 +76,4 @@ function make_geom() {
         offset: 10,
         middle: h < 0.75 * w
     };
-}
-
-interface Iwasm {
-    add_integers(a: number, b: number): number;
-}
-
-
-function load_wasm() {
-    let wasm_log_buf:Array<string> = [];
-    const importObject = {
-        env: {
-            js_log_: (arg : number) => {
-                if (arg == 0) {
-                    console.log("zig:", wasm_log_buf.join(''));
-                    wasm_log_buf = [];
-                }
-                else
-                    wasm_log_buf.push(String.fromCharCode(arg));
-            }
-        },
-        // some black magic
-        wasi_unstable: {
-            proc_exit: arg => console.log("proc_exit", arg),
-            fd_write: arg => console.log("fd_write", arg)
-        }
-    };
-
-    WebAssembly.instantiateStreaming(fetch('animation.wasm'), importObject)
-        .then(m => {
-            const mod = m.instance.exports as unknown as Iwasm;
-            console.log("12 + 17 =", mod.add_integers(12, 17));
-        });
-
 }

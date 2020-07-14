@@ -16,8 +16,14 @@ export interface Ball {
     readonly c: Color;
 }
 
+export interface Iwasm {
+    add_integers(a: number, b: number): number;
+}
+
 export interface App {
     readonly g?: Geom;
+    readonly wasm?: Iwasm;
+    
     update_geometry(g: Geom):void;
     draw_balls(): void;
     cue(): Ball;
