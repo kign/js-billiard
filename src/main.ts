@@ -8,6 +8,8 @@ class Application implements App {
     public g?: Geom;
     public wasm?: Iwasm;
     private balls?: Ball[];
+    private ctx?: CanvasRenderingContext2D;
+    private bg: Color = Color.rgb(255,255,255);
 
     public constructor() {
         this.load_wasm ();
@@ -17,13 +19,25 @@ class Application implements App {
         let wasm_log_buf: Array<string> = [];
         const importObject = {
             env: {
-                js_log_: (arg: number) => {
+                js_log_char: (arg: number) => {
                     if (arg == 0) {
                         console.log("zig:", wasm_log_buf.join(''));
                         wasm_log_buf = [];
                     }
                     else
                         wasm_log_buf.push(String.fromCharCode(arg));
+                },
+                ball_status: (idx: number, active: number, x: number, y: number, vx: number, vy: number) => {
+                    //console.log("ball_status", idx, active, x, y, vx, vy);
+                    const b = this.balls![idx];
+                    canvas.draw_ball(b, this.ctx!, this.bg);
+                    b.x = x;
+                    b.y = y;
+                    b.vx = vx;
+                    b.vy = vy;
+                    b.active = active != 0;
+                    if (b.active)
+                        canvas.draw_ball(b, this.ctx!);
                 }
             },
             // some black magic
@@ -44,6 +58,7 @@ class Application implements App {
     public update_geometry(g: Geom) {
         this.g = g;
         this.balls = position_balls(g.W, g.H);
+        this.ctx = html.canvas.getContext('2d')!;
     }
 
     public draw_balls(): void {
@@ -58,8 +73,35 @@ class Application implements App {
     }
 
     public run(vx: number, vy: number): void {
-        console.log("12 + 17 =", this.wasm!.add_integers(12, 17));
+        this.cue().vx = vx;
+        this.cue().vy = vy;
+
+        for (let ii = this.balls!.length - 1; ii >= 0; ii --)
+            if (!this.balls![ii].active)
+                this.balls!.splice(ii,1);
+    
+        const wasm = this.wasm!;
+        const g = this.g!;
+        wasm.reset ();
+        for (let b of this.balls!)
+            wasm.add_ball(b.x, b.y, b.vx, b.vy, b.r, b.m);
+        wasm.set_boundary_box(g.offset, g.W - g.offset, g.offset, g.H - g.offset);
+
+        wasm.add_line(g.offset, g.round + g.offset, g.offset, g.H - g.round - g.offset);
+        wasm.add_line(g.W - g.offset, g.H - g.offset - g.round, g.W - g.offset, g.offset + g.round);
+
+        if (g.middle) {
+            wasm.add_line(g.offset + g.round, g.H - g.offset, g.W / 2 - g.round, g.H - g.offset);
+            wasm.add_line(g.W / 2 + g.round, g.H - g.offset, g.W - g.offset - g.round, g.H - g.offset);
+            wasm.add_line(g.W - g.offset - g.round, g.offset, g.W / 2 + g.round, g.offset);
+            wasm.add_line(g.W / 2 - g.round, g.offset, g.offset + g.round, g.offset);
+        }
+        else {
+            wasm.add_line(g.offset + g.round, g.H - g.offset, g.W - g.offset - g.round, g.H - g.offset);
+            wasm.add_line(g.W - g.offset - g.round, g.offset, g.offset + g.round, g.offset);
+        }
         console.log("Initiating run(" + vx + "," + vy + ")");
+        wasm.run (0.1);
     }
 }
 
@@ -67,7 +109,7 @@ function position_balls(W: number, H: number): Ball[] {
     // https://fr.wikipedia.org/wiki/Billard
     // https://en.wikipedia.org/wiki/Pool_(cue_sports)
 
-    const b = {r: 20, m: 1};
+    const b = {r: 20, m: 1, vx: 0, vy: 0, active: true};
     const gap = 4;
     const side = 8 * b.r + 4 * gap;
 

@@ -9,21 +9,29 @@ export interface Geom {
 }
 
 export interface Ball {
-    readonly x: number;
-    readonly y: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    active: boolean;
+
     readonly r: number;
     readonly m: number;
     readonly c: Color;
 }
 
 export interface Iwasm {
-    add_integers(a: number, b: number): number;
+    run(interval: number): void;
+    add_ball(x: number, y: number, vx: number, vy: number, r: number, m: number) : void;
+    add_line(x1: number, y1: number, x2: number, y2: number): void;
+    set_boundary_box(x0: number, x1: number, y0: number, y1: number): void;
+    reset(): void;
 }
 
 export interface App {
     readonly g?: Geom;
     readonly wasm?: Iwasm;
-    
+
     update_geometry(g: Geom):void;
     draw_balls(): void;
     cue(): Ball;
