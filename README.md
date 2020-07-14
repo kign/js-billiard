@@ -19,6 +19,12 @@ To start dev server
 npm start
 ```
 
+`Zig` source code compilation to `wasm`
+
+```bash
+zig build-lib src/animation.zig -target wasm32-wasi --output-dir dist
+```
+
 [TypeScript in Webpack](https://webpack.js.org/guides/typescript/)
 
 [HtmlWebpackPlugin templates](https://github.com/jantimon/html-webpack-plugin#writing-your-own-templates)
