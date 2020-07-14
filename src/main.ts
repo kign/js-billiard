@@ -10,6 +10,7 @@ class Application implements App {
     private balls?: Ball[];
     private ctx?: CanvasRenderingContext2D;
     private bg: Color = Color.rgb(255,255,255);
+    private interval = 0.1;
 
     public constructor() {
         this.load_wasm ();
@@ -72,6 +73,28 @@ class Application implements App {
         return this.balls![0];
     }
 
+    private move() {
+        const t0 = Date.now() / 1000;
+        this.wasm!.run(this.interval);
+        let n_mov = 0;
+        for (let b of this.balls!) 
+            if (b.active && (b.vx != 0 || b.vy != 0))
+                n_mov ++;
+
+        if (n_mov == 0) {
+            console.log("Movement stopped");
+        }
+        else {
+            const dt = Date.now() / 1000 - t0;
+            //console.log("Time spent in wasm:", dt);
+            if (dt < this.interval) 
+                window.setTimeout(() => this.move(), 1000*(this.interval - dt));
+            else
+                this.move ();
+        }
+
+    }
+
     public run(vx: number, vy: number): void {
         this.cue().vx = vx;
         this.cue().vy = vy;
@@ -101,7 +124,8 @@ class Application implements App {
             wasm.add_line(g.W - g.offset - g.round, g.offset, g.offset + g.round, g.offset);
         }
         console.log("Initiating run(" + vx + "," + vy + ")");
-        wasm.run (0.1);
+
+        this.move ();
     }
 }
 
