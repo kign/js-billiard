@@ -22,7 +22,7 @@ export function init (app: App):void {
 			clear(ctx);
 			draw_border(app, ctx);
 			app.draw_balls();
-			draw_ball(b, ctx, hcol);
+			draw_ball(b, 0, ctx, hcol);
 
 			const v : Circle = { x: x, y: y, r: 0.5 * b.r };
 
@@ -38,7 +38,7 @@ export function init (app: App):void {
 			const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
 			if (ch != cue_highlighted) {
 				const ctx = html.canvas.getContext('2d')!;
-				draw_ball(b, ctx, ch?hcol:undefined);
+				draw_ball(b, 0, ctx, ch?hcol:undefined);
 				cue_highlighted = ch;
 			}
 		}
@@ -129,11 +129,16 @@ export function draw_border(app: App, ctx: CanvasRenderingContext2D) {
 	ctx.stroke();
 }
 
-export function draw_ball(b: Ball, ctx: CanvasRenderingContext2D, c?: Color) :void {
+export function draw_ball(b: Ball, n: number, ctx: CanvasRenderingContext2D, c?: Color) :void {
 	ctx.fillStyle = (c || b.c).string();
 	ctx.beginPath();
 	ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
 	ctx.fill();
+	if (c == undefined && n > 0) {
+		ctx.fillStyle = Color.rgb(255 - (c || b.c).red(), 255 - (c || b.c).green(), 255 - (c || b.c).blue()).string();
+		ctx.font = b.r + "px Arial";
+		ctx.fillText(n.toString(), b.x - b.r/2, b.y + b.r/3);
+	}
 }
 
 function clear(ctx: CanvasRenderingContext2D):void {
