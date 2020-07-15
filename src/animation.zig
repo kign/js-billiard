@@ -2,8 +2,16 @@ const std = @import("std");
 
 extern fn js_log_char(arg: u8) void;
 
+extern "c" fn atan2(a: f64, b: f64) f64;
+
+extern fn js_atan2(a: f32, b: f32) f32;
+
+const PI: f32 = 3.1415926535897932384626433832795028841971693993751058209749445923078;
+
+const teps = 1.0e-5;
+
 fn js_log(comptime fmt: []const u8, args: var) void {
-    var _buf: [100]u8 = undefined;
+    var _buf: [200]u8 = undefined;
     const buf = _buf[0..];
     const s = std.fmt.bufPrint(buf, fmt, args) catch "error(js_log)";
     for (s) |c| {
@@ -40,7 +48,7 @@ const Line = struct {
 };
 
 const Point = struct {
-    x: f32, 
+    x: f32,
     y: f32,
 
     pub fn format(self: Point, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: var) !void {
@@ -96,7 +104,7 @@ extern fn ball_status(idx: i32, active: i32, x: f32, y: f32, vx: f32, vy: f32) v
 var rcnt: i32 = 0;
 export fn run(interval: f32) void {
     rcnt += 1;
-    //js_log("Run {}: {} balls, {} lines, {} points", .{ rcnt, Nb, Nl, Np });
+    //js_log("[{}] Run IN: {} balls, {} lines, {} points", .{ rcnt, Nb, Nl, Np });
 
     make_step(interval);
     var ii: usize = 0;
@@ -104,6 +112,7 @@ export fn run(interval: f32) void {
         const b = balls[ii];
         ball_status(@intCast(i32, ii), if (b.active) 1 else 0, b.x, b.y, b.vx, b.vy);
     }
+    //js_log("[{}] Run OUT", .{rcnt});
 }
 
 const decel = 20;
@@ -112,45 +121,92 @@ fn make_step(interval: f32) void {
     var ii: usize = 0;
 
     var t: f32 = 0;
+    var iter: u32 = 0;
 
     while (true) {
-        var t1 = interval;
+        iter += 1;
+        if (iter > 1000)
+            break;
+
+        var dt = interval - t;
         var next_ii: ?usize = null;
-        var vx: f32 = undefined;
-        var vy: f32 = undefined;
+        var next_jj: ?usize = null;
+
+        var vxi: f32 = undefined;
+        var vyi: f32 = undefined;
+        var vxj: f32 = undefined;
+        var vyj: f32 = undefined;
 
         ii = 0;
         while (ii < Nb) : (ii += 1) {
             const b = balls[ii];
+
+            var jj: usize = ii + 1;
+            while (jj < Nb) : (jj += 1) {
+                if (ball_x_ball(b, balls[jj], &dt, &vxi, &vyi, &vxj, &vyj)) {
+                    next_ii = ii;
+                    next_jj = jj;
+
+                    //js_log("[{}.{}] Ball {} vx {}: t = {d:.3}, 1st ({d:.3},{d:.3}) => ({d:.3},{d:.3}), 2nd ({d:.3},{d:.3}) => ({d:.3},{d:.3})", .{ rcnt, iter, ii, jj, t + dt, balls[ii].vx, balls[ii].vy, vxi, vyi, balls[jj].vx, balls[jj].vy, vxj, vyj });
+                }
+            }
+
             if (!b.moving)
                 continue;
 
             for (lines[0..Nl]) |l| {
-                if (ball_x_line(b, l, &t1, &vx, &vy))
+                if (ball_x_line(b, l, &dt, &vxi, &vyi)) {
                     next_ii = ii;
+                    next_jj = null;
+                }
             }
 
             for (points[0..Np]) |p| {
-                if (ball_x_point(b, p, &t1, &vx, &vy))
+                if (ball_x_point(b, p, &dt, &vxi, &vyi)) {
                     next_ii = ii;
+                    next_jj = null;
+                }
             }
         }
 
-        //js_log("t1 = {d:.6}", .{t1});
+        //js_log("dt = {d:.6}", .{dt});
         ii = 0;
         while (ii < Nb) : (ii += 1) {
             const b = balls[ii];
             if (b.moving) {
-                balls[ii].x += (t1 - t) * b.vx;
-                balls[ii].y += (t1 - t) * b.vy;
+                balls[ii].x += dt * b.vx;
+                balls[ii].y += dt * b.vy;
             }
         }
 
-        t = t1;
-        if (next_ii) |idx| {
-            js_log("Hit obstacled @ t = {d:.6}", .{t});
-            balls[idx].vx = vx;
-            balls[idx].vy = vy;
+        t += dt;
+        if (next_ii) |ii_| {
+            if (next_jj) |jj_| {
+                js_log("[{}.{}] Ball {} collided with ball {} @ t = {d:.6}", .{ rcnt, iter, ii_, jj_, t });
+                js_log("1st ({d:.3},{d:.3}) => ({d:.3},{d:.3}), 2nd ({d:.3},{d:.3}) => ({d:.3},{d:.3})", .{ balls[ii_].vx, balls[ii_].vy, vxi, vyi, balls[jj_].vx, balls[jj_].vy, vxj, vyj });
+                balls[ii_].vx = vxi;
+                balls[ii_].vy = vyi;
+                balls[ii_].moving = true;
+
+                balls[jj_].vx = vxj;
+                balls[jj_].vy = vyj;
+                balls[jj_].moving = true;
+            } else {
+                js_log("[{}.{}] Ball {} hit obstacle @ t = {d:.6}", .{ rcnt, iter, ii_, t });
+                balls[ii_].vx = vxi;
+                balls[ii_].vy = vyi;
+                balls[ii_].moving = true;
+
+                // FIXME
+                var kk: usize = 0;
+                while (kk < Nb) : (kk += 1) {
+                    balls[kk].moving = false;
+                    balls[kk].vx = 0;
+                    balls[kk].vy = 0;
+                }
+                js_log("Hit break!", .{});
+                break; // FIXME
+            }
         } else
             break;
     }
@@ -167,12 +223,17 @@ fn make_step(interval: f32) void {
             } else {
                 balls[ii].vx *= (speed - decel * interval) / speed;
                 balls[ii].vy *= (speed - decel * interval) / speed;
-                // if (ii == 0) {
-                //     js_log("Velocity {d:.6}, {d:.6}", .{balls[ii].vx, balls[ii].vy});
-                // }
             }
         }
         if (b.x < bb.x0 or b.x > bb.x1 or b.y < bb.y0 or b.y > bb.y1) {
+            if (b.x < bb.x0)
+                js_log("x = {d:.2} < {d:.2}", .{ b.x, bb.x0 });
+            if (b.x > bb.x1)
+                js_log("x = {d:.2} > {d:.2}", .{ b.x, bb.x1 });
+            if (b.y < bb.y0)
+                js_log("y = {d:.2} < {d:.2}", .{ b.y, bb.y0 });
+            if (b.y > bb.y1)
+                js_log("y = {d:.2} > {d:.2}", .{ b.y, bb.y1 });
             js_log("Out of the box!", .{});
             balls[ii].active = false;
         }
@@ -199,8 +260,8 @@ fn ball_x_line(b: Ball, l: Line, t: *f32, vx: *f32, vy: *f32) bool {
     const p1 = (a * t1 + be) / d2;
     const p2 = (a * t2 + be) / d2;
 
-    const ok1 = t1 > 0 and p1 > 0 and p1 < 1;
-    const ok2 = t2 > 0 and p2 > 0 and p2 < 1;
+    const ok1 = t1 > teps and p1 > 0 and p1 < 1;
+    const ok2 = t2 > teps and p2 > 0 and p2 < 1;
 
     if (!ok1 and !ok2)
         return false;
@@ -214,6 +275,7 @@ fn ball_x_line(b: Ball, l: Line, t: *f32, vx: *f32, vy: *f32) bool {
     vx.* = 2 * s * lx / d2 - b.vx;
     vy.* = 2 * s * ly / d2 - b.vy;
 
+    //js_log("ball_x_line returns {}", .{t_});
     return true;
 }
 
@@ -230,10 +292,10 @@ fn ball_x_point(b: Ball, p: Point, t: *f32, vx: *f32, vy: *f32) bool {
     const t1 = (-be - q) / v2;
     const t2 = (-be + q) / v2;
 
-    if (t1 <= 0 and t2 <= 0)
+    if (t1 <= teps and t2 <= teps)
         return false;
 
-    const t_ = if (t1 <= 0) t2 else if (t2 <= 0) t1 else if (t1 < t2) t1 else t2;
+    const t_ = if (t1 <= teps) t2 else if (t2 <= teps) t1 else if (t1 < t2) t1 else t2;
 
     //js_log("Solution for {} @ {}", .{p, t_});
     if (t_ >= t.*)
@@ -246,5 +308,58 @@ fn ball_x_point(b: Ball, p: Point, t: *f32, vx: *f32, vy: *f32) bool {
     vx.* = 2 * s * gy / b.r / b.r - b.vx;
     vy.* = -2 * s * gx / b.r / b.r - b.vy;
 
+    //js_log("ball_x_point returns {}", .{t_});
+    return true;
+}
+
+fn ball_x_ball(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
+    const x = b1.x - b2.x;
+    const vx = b1.vx - b2.vx;
+    const y = b1.y - b2.y;
+    const vy = b1.vy - b2.vy;
+    const r2 = (b1.r + b2.r) * (b1.r + b2.r);
+    const de = vx * vx + vy * vy;
+    const d = 2 * x * y * vx * vy + r2 * de - x * x * vy * vy - y * y * vx * vx;
+
+    if (vx > -teps and vx < teps and vy > -teps and vy < teps)
+        return false;
+
+    if (d < 0)
+        return false;
+
+    const sd = @sqrt(d);
+    const t1 = -(sd + x * vx + y * vy) / de;
+    const t2 = (sd - x * vx - y * vy) / de;
+
+    if (t1 <= teps and t2 <= teps)
+        return false;
+
+    const t_ = if (t1 <= teps) t2 else if (t2 <= teps) t1 else if (t1 < t2) t1 else t2;
+    if (t_ >= t.*)
+        return false;
+
+    const x1 = b1.x + t_ * b1.vx;
+    const y1 = b1.y + t_ * b1.vy;
+    const x2 = b2.x + t_ * b2.vx;
+    const y2 = b2.y + t_ * b2.vy;
+    const v1 = @sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
+    const v2 = @sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
+    const m = b1.m + b2.m;
+
+    // Base on: https://williamecraver.wixsite.com/elastic-equations
+    // See also: https://www.real-world-physics-problems.com/elastic-collision.html
+    const p1 = js_atan2(b1.vy, b1.vx);
+    const p2 = js_atan2(b2.vy, b2.vx);
+    const f = js_atan2(y2 - y1, x2 - x1);
+    const z1 = v1 * @cos(p1 - f) * (b1.m - b2.m) + 2 * b2.m * v2 * @cos(p2 - f);
+    const z2 = v2 * @cos(p2 - f) * (b2.m - b1.m) + 2 * b1.m * v1 * @cos(p1 - f);
+
+    t.* = t_;
+    vx1.* = z1 * @cos(f) / m + v1 * @sin(p1 - f) * @cos(f + PI / 2);
+    vy1.* = z1 * @sin(f) / m + v1 * @sin(p1 - f) * @sin(f + PI / 2);
+    vx2.* = z2 * @cos(f) / m + v2 * @sin(p2 - f) * @cos(f + PI / 2);
+    vy2.* = z2 * @sin(f) / m + v2 * @sin(p2 - f) * @sin(f + PI / 2);
+
+    //js_log("{} x {} returns {}", .{b1, b2, t_});
     return true;
 }
