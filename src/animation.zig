@@ -141,8 +141,14 @@ fn make_step(interval: f32) void {
         while (ii < Nb) : (ii += 1) {
             const b = balls[ii];
 
+            if (!b.active)
+                continue;
+
             var jj: usize = ii + 1;
             while (jj < Nb) : (jj += 1) {
+                if (!balls[jj].active)
+                    continue;
+
                 if (ball_x_ball(b, balls[jj], &dt, &vxi, &vyi, &vxj, &vyj)) {
                     next_ii = ii;
                     next_jj = jj;
@@ -173,7 +179,7 @@ fn make_step(interval: f32) void {
         ii = 0;
         while (ii < Nb) : (ii += 1) {
             const b = balls[ii];
-            if (b.moving) {
+            if (b.moving and b.active) {
                 balls[ii].x += dt * b.vx;
                 balls[ii].y += dt * b.vy;
             }
@@ -182,8 +188,8 @@ fn make_step(interval: f32) void {
         t += dt;
         if (next_ii) |ii_| {
             if (next_jj) |jj_| {
-                js_log("[{}.{}] Ball {} collided with ball {} @ t = {d:.6}", .{ rcnt, iter, ii_, jj_, t });
-                js_log("1st ({d:.3},{d:.3}) => ({d:.3},{d:.3}), 2nd ({d:.3},{d:.3}) => ({d:.3},{d:.3})", .{ balls[ii_].vx, balls[ii_].vy, vxi, vyi, balls[jj_].vx, balls[jj_].vy, vxj, vyj });
+                //js_log("[{}.{}] Ball {} collided with ball {} @ t = {d:.6}", .{ rcnt, iter, ii_, jj_, t });
+                //js_log("1st ({d:.3},{d:.3}) => ({d:.3},{d:.3}), 2nd ({d:.3},{d:.3}) => ({d:.3},{d:.3})", .{ balls[ii_].vx, balls[ii_].vy, vxi, vyi, balls[jj_].vx, balls[jj_].vy, vxj, vyj });
                 balls[ii_].vx = vxi;
                 balls[ii_].vy = vyi;
                 balls[ii_].moving = true;
@@ -192,20 +198,20 @@ fn make_step(interval: f32) void {
                 balls[jj_].vy = vyj;
                 balls[jj_].moving = true;
             } else {
-                js_log("[{}.{}] Ball {} hit obstacle @ t = {d:.6}", .{ rcnt, iter, ii_, t });
+                //js_log("[{}.{}] Ball {} hit obstacle @ t = {d:.6}", .{ rcnt, iter, ii_, t });
                 balls[ii_].vx = vxi;
                 balls[ii_].vy = vyi;
                 balls[ii_].moving = true;
 
-                // FIXME
-                var kk: usize = 0;
-                while (kk < Nb) : (kk += 1) {
-                    balls[kk].moving = false;
-                    balls[kk].vx = 0;
-                    balls[kk].vy = 0;
-                }
-                js_log("Hit break!", .{});
-                break; // FIXME
+                // // FIXME
+                // var kk: usize = 0;
+                // while (kk < Nb) : (kk += 1) {
+                //     balls[kk].moving = false;
+                //     balls[kk].vx = 0;
+                //     balls[kk].vy = 0;
+                // }
+                // js_log("Hit break!", .{});
+                // break; // FIXME
             }
         } else
             break;
@@ -214,6 +220,8 @@ fn make_step(interval: f32) void {
     ii = 0;
     while (ii < Nb) : (ii += 1) {
         const b = balls[ii];
+        if (!b.active)
+            continue;
         if (b.moving) {
             const speed = @sqrt(b.vx * b.vx + b.vy * b.vy);
             if (speed <= decel * interval) {
@@ -227,14 +235,14 @@ fn make_step(interval: f32) void {
         }
         if (b.x < bb.x0 or b.x > bb.x1 or b.y < bb.y0 or b.y > bb.y1) {
             if (b.x < bb.x0)
-                js_log("x = {d:.2} < {d:.2}", .{ b.x, bb.x0 });
+                js_log("[{}] OOB Ball {} | x = {d:.2} < {d:.2}", .{ rcnt, ii, b.x, bb.x0 });
             if (b.x > bb.x1)
-                js_log("x = {d:.2} > {d:.2}", .{ b.x, bb.x1 });
+                js_log("[{}] OOB Ball {} | x = {d:.2} > {d:.2}", .{ rcnt, ii, b.x, bb.x1 });
             if (b.y < bb.y0)
-                js_log("y = {d:.2} < {d:.2}", .{ b.y, bb.y0 });
+                js_log("[{}] OOB Ball {} | y = {d:.2} < {d:.2}", .{ rcnt, ii, b.y, bb.y0 });
             if (b.y > bb.y1)
-                js_log("y = {d:.2} > {d:.2}", .{ b.y, bb.y1 });
-            js_log("Out of the box!", .{});
+                js_log("[{}] OOB Ball {} | y = {d:.2} > {d:.2}", .{ rcnt, ii, b.y, bb.y1 });
+            //js_log("Out of the box!", .{});
             balls[ii].active = false;
         }
     }
