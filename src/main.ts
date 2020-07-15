@@ -20,6 +20,7 @@ class Application implements App {
         let wasm_log_buf: Array<string> = [];
         const importObject = {
             env: {
+                js_atan2: (a: number, b: number) => Math.atan2(a, b),
                 js_log_char: (arg: number) => {
                     if (arg == 0) {
                         console.log("zig:", wasm_log_buf.join(''));
@@ -31,14 +32,14 @@ class Application implements App {
                 ball_status: (idx: number, active: number, x: number, y: number, vx: number, vy: number) => {
                     //console.log("ball_status", idx, active, x, y, vx, vy);
                     const b = this.balls![idx];
-                    canvas.draw_ball(b, this.ctx!, this.bg);
+                    canvas.draw_ball(b, idx, this.ctx!, this.bg);
                     b.x = x;
                     b.y = y;
                     b.vx = vx;
                     b.vy = vy;
                     b.active = active != 0;
                     if (b.active)
-                        canvas.draw_ball(b, this.ctx!);
+                        canvas.draw_ball(b, idx, this.ctx!);
                 }
             },
             // some black magic
@@ -66,7 +67,8 @@ class Application implements App {
         const ctx = html.canvas.getContext('2d')!;
 
         for (let ii = 0; ii < this.balls!.length; ii ++)
-            canvas.draw_ball(this.balls![ii], ctx);   
+            if (this.balls![ii].active)
+                canvas.draw_ball(this.balls![ii], ii, ctx);   
     }
 
     public cue() {
@@ -81,10 +83,12 @@ class Application implements App {
             if (b.active && (b.vx != 0 || b.vy != 0))
                 n_mov ++;
 
+        //n_mov = 0;
         if (n_mov == 0) {
             console.log("Movement stopped");
         }
         else {
+            //console.log("Movement continues (" + n_mov + " balls still moving)");
             const dt = Date.now() / 1000 - t0;
             //console.log("Time spent in wasm:", dt);
             if (dt < this.interval) 
@@ -98,6 +102,10 @@ class Application implements App {
     public run(vx: number, vy: number): void {
         this.cue().vx = vx;
         this.cue().vy = vy;
+
+        // FIXME!!!
+        //this.cue().vx = 216.5;
+        //this.cue().vy = -7;
 
         for (let ii = this.balls!.length - 1; ii >= 0; ii --)
             if (!this.balls![ii].active)
@@ -123,7 +131,7 @@ class Application implements App {
             wasm.add_line(g.offset + g.round, g.H - g.offset, g.W - g.offset - g.round, g.H - g.offset);
             wasm.add_line(g.W - g.offset - g.round, g.offset, g.offset + g.round, g.offset);
         }
-        console.log("Initiating run(" + vx + "," + vy + ")");
+        //console.log("Initiating run(" + vx + "," + vy + ")");
 
         this.move ();
     }
@@ -134,7 +142,7 @@ function position_balls(W: number, H: number): Ball[] {
     // https://en.wikipedia.org/wiki/Pool_(cue_sports)
 
     const b = {r: 20, m: 1, vx: 0, vy: 0, active: true};
-    const gap = 4;
+    const gap = 20;
     const side = 8 * b.r + 4 * gap;
 
     const x1 = 2/3*W;
