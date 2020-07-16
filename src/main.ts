@@ -1,7 +1,7 @@
 import * as Color from 'color';
 import {App, Geom, Ball, Iwasm} from './app';
 import * as init from './init';
-import { html } from './html';
+import {html} from './html';
 import * as canvas from './canvas';
 
 class Application implements App {
@@ -20,7 +20,6 @@ class Application implements App {
         let wasm_log_buf: Array<string> = [];
         const importObject = {
             env: {
-                js_atan2: (a: number, b: number) => Math.atan2(a, b),
                 js_log_char: (arg: number) => {
                     if (arg == 0) {
                         console.log("zig:", wasm_log_buf.join(''));
@@ -104,8 +103,8 @@ class Application implements App {
         this.cue().vy = vy;
 
         // FIXME!!!
-        //this.cue().vx = 216.5;
-        //this.cue().vy = -7;
+        //this.cue().vx = 171.25;
+        //this.cue().vy = -115;
 
         for (let ii = this.balls!.length - 1; ii >= 0; ii --)
             if (!this.balls![ii].active)

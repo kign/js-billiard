@@ -2,10 +2,6 @@ const std = @import("std");
 
 extern fn js_log_char(arg: u8) void;
 
-extern fn js_atan2(a: f32, b: f32) f32;
-
-const PI: f32 = 3.1415926535897932384626433832795028841971693993751058209749445923078;
-
 const teps = 1.0e-5;
 
 fn js_log(comptime fmt: []const u8, args: var) void {
@@ -323,128 +319,6 @@ inline fn fabs(x: f32) f32 {
 }
 
 fn ball_x_ball(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
-    const eps = 1.0e-4;
-    const isnan = std.math.isNan;
-
-    const select_new = true;
-
-    var vx1_o :f32 = undefined;
-    var vy1_o :f32 = undefined;
-    var vx2_o :f32 = undefined;
-    var vy2_o :f32 = undefined;
-    var t_o = t.*;
-
-    const r_o = ball_x_ball_old(b1, b2, &t_o, &vx1_o, &vy1_o, &vx2_o, &vy2_o);
-
-    var vx1_n :f32 = undefined;
-    var vy1_n :f32 = undefined;
-    var vx2_n :f32 = undefined;
-    var vy2_n :f32 = undefined;
-    var t_n = t.*;
-
-    const r_n = ball_x_ball_new(b1, b2, &t_n, &vx1_n, &vy1_n, &vx2_n, &vy2_n);
-
-    if (r_o != r_n) {
-        js_log("INCONSISTENCY: Old code {}, new {}", .{r_o, r_n});
-    }
-    else if (r_o) {
-        if (fabs(t_o - t_n) > eps)
-            js_log("INCONSISTENCY: t_o = {d:.4}, t_n = {d:.4}, diff = {}", .{t_o, t_n, t_n-t_o});
-        if (fabs(vx1_o - vx1_n) > eps)
-            js_log("INCONSISTENCY: vx1_o = {d:.4}, vx1_n = {d:.4}, diff = {}", .{vx1_o, vx1_n, vx1_n-vx1_o} );
-        if (fabs(vy1_o - vy1_n) > eps)
-            js_log("INCONSISTENCY: vy1_o = {d:.4}, vy1_n = {d:.4}, diff = {}", .{vy1_o, vy1_n, vy1_n-vy1_o} );
-        if (fabs(vx2_o - vx2_n) > eps)
-            js_log("INCONSISTENCY: vx2_o = {d:.4}, vx2_n = {d:.4}, diff = {}", .{vx2_o, vx2_n, vx2_n-vx2_o} );
-        if (fabs(vy2_o - vy2_n) > eps)
-            js_log("INCONSISTENCY: vy2_o = {d:.4}, vy2_n = {d:.4}, diff = {}", .{vy2_o, vy2_n, vy2_n-vy2_o} );
-
-        if (isnan(t_o) or isnan(vx1_o) or isnan(vy1_o) or isnan(vx2_o) or isnan(vy2_o))
-            js_log("ERROR: t_o={d:.2}, vx1_o={d:.2}, vy1_o={d:.2}, vx2_o={d:.2}, vy2_o={d:.2}",
-            .{t_o, vx1_o, vy1_o, vx2_o, vy2_o});
-        if (isnan(t_n) or isnan(vx1_n) or isnan(vy1_n) or isnan(vx2_n) or isnan(vy2_n))
-            js_log("ERROR: t_n={d:.2}, vx1_n={d:.2}, vy1_n={d:.2}, vx2_n={d:.2}, vy2_n={d:.2}",
-            .{t_n, vx1_n, vy1_n, vx2_n, vy2_n});
-
-    }
-
-    if (select_new) {
-        if (r_n) {
-            t.* = t_n;
-            vx1.* = vx1_n;
-            vy1.* = vy1_n;
-            vx2.* = vx2_n;
-            vy2.* = vy2_n;
-        }
-
-        return r_n;
-    }
-    else {
-        if (r_o) {
-            t.* = t_o;
-            vx1.* = vx1_o;
-            vy1.* = vy1_o;
-            vx2.* = vx2_o;
-            vy2.* = vy2_o;
-        }
-
-        return r_o;
-    }
-}
-
-fn ball_x_ball_old(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
-    const x = b1.x - b2.x;
-    const vx = b1.vx - b2.vx;
-    const y = b1.y - b2.y;
-    const vy = b1.vy - b2.vy;
-    const r2 = (b1.r + b2.r) * (b1.r + b2.r);
-    const de = vx * vx + vy * vy;
-    const d = 2 * x * y * vx * vy + r2 * de - x * x * vy * vy - y * y * vx * vx;
-
-    if (vx > -teps and vx < teps and vy > -teps and vy < teps)
-        return false;
-
-    if (d < 0)
-        return false;
-
-    const sd = @sqrt(d);
-    const t1 = -(sd + x * vx + y * vy) / de;
-    const t2 = (sd - x * vx - y * vy) / de;
-
-    if (t1 <= teps and t2 <= teps)
-        return false;
-
-    const t_ = if (t1 <= teps) t2 else if (t2 <= teps) t1 else if (t1 < t2) t1 else t2;
-    if (t_ >= t.*)
-        return false;
-
-    const x1 = b1.x + t_ * b1.vx;
-    const y1 = b1.y + t_ * b1.vy;
-    const x2 = b2.x + t_ * b2.vx;
-    const y2 = b2.y + t_ * b2.vy;
-    const v1 = @sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
-    const v2 = @sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
-    const m = b1.m + b2.m;
-
-    // Base on: https://williamecraver.wixsite.com/elastic-equations
-    // See also: https://www.real-world-physics-problems.com/elastic-collision.html
-    const p1 = js_atan2(b1.vy, b1.vx);
-    const p2 = js_atan2(b2.vy, b2.vx);
-    const f = js_atan2(y2 - y1, x2 - x1);
-    const z1 = v1 * @cos(p1 - f) * (b1.m - b2.m) + 2 * b2.m * v2 * @cos(p2 - f);
-    const z2 = v2 * @cos(p2 - f) * (b2.m - b1.m) + 2 * b1.m * v1 * @cos(p1 - f);
-
-    t.* = t_;
-    vx1.* = z1 * @cos(f) / m + v1 * @sin(p1 - f) * @cos(f + PI / 2);
-    vy1.* = z1 * @sin(f) / m + v1 * @sin(p1 - f) * @sin(f + PI / 2);
-    vx2.* = z2 * @cos(f) / m + v2 * @sin(p2 - f) * @cos(f + PI / 2);
-    vy2.* = z2 * @sin(f) / m + v2 * @sin(p2 - f) * @sin(f + PI / 2);
-
-    //js_log("OLD {} x {} returns {d:.3} @ ({d:.3},{d:.3}) ({d:.3},{d:.3})", .{b1, b2, t_, vx1.*, vy1.*, vx2.*, vy2.*});
-    return true;
-}
-
-fn ball_x_ball_new(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
     const veps = 1.0e-6;
     const x = b1.x - b2.x;
     const vx = b1.vx - b2.vx;
