@@ -1,4 +1,4 @@
-import {App, Iwasm} from './app';
+import {App} from './app';
 import {html} from './html';
 import * as canvas from './canvas';
 
@@ -13,12 +13,12 @@ export function init(app: App) {
     app.draw_balls();
 
     const hr = html.slider.firstElementChild as HTMLElement;
-    html.slider.addEventListener("mouseover", event => {
+    html.slider.addEventListener("mouseover", () => {
         hr.style.visibility = "visible";
         if (log_resize)
             console.log("over");
     });
-    html.slider.addEventListener("mouseout", event => {
+    html.slider.addEventListener("mouseout", () => {
         hr.style.visibility = "hidden";
         if (log_resize)
             console.log("out");
@@ -58,7 +58,6 @@ export function init(app: App) {
             html.canvas.height += (evt.screenY - event.screenY);
             app.update_geometry(make_geom());
             canvas.draw_border(app, ctx);
-
         };
 
         document.addEventListener("mousemove", on_move);
