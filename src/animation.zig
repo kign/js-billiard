@@ -2,8 +2,6 @@ const std = @import("std");
 
 extern fn js_log_char(arg: u8) void;
 
-extern "c" fn atan2(a: f64, b: f64) f64;
-
 extern fn js_atan2(a: f32, b: f32) f32;
 
 const PI: f32 = 3.1415926535897932384626433832795028841971693993751058209749445923078;
@@ -320,7 +318,57 @@ fn ball_x_point(b: Ball, p: Point, t: *f32, vx: *f32, vy: *f32) bool {
     return true;
 }
 
+inline fn fabs(x: f32) f32 {
+    return if (x > 0) x else -x;
+}
+
 fn ball_x_ball(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
+    const eps = 1.0e-4;
+
+    var vx1_o :f32 = undefined;
+    var vy1_o :f32 = undefined;
+    var vx2_o :f32 = undefined;
+    var vy2_o :f32 = undefined;
+    var t_o = t.*;
+
+    const r_o = ball_x_ball_old(b1, b2, &t_o, &vx1_o, &vy1_o, &vx2_o, &vy2_o);
+
+    var vx1_n :f32 = undefined;
+    var vy1_n :f32 = undefined;
+    var vx2_n :f32 = undefined;
+    var vy2_n :f32 = undefined;
+    var t_n = t.*;
+
+    const r_n = ball_x_ball_new(b1, b2, &t_n, &vx1_n, &vy1_n, &vx2_n, &vy2_n);
+
+    if (r_o != r_n) {
+        js_log("INCONSISTENCY: Old code {}, new {}", .{r_o, r_n});
+    }
+    else if (r_o) {
+        if (fabs(t_o - t_n) > eps)
+            js_log("INCONSISTENCY: t_o = {d:.4}, t_n = {d:.4}, diff = {}", .{t_o, t_n, t_n-t_o});
+        if (fabs(vx1_o - vx1_n) > eps)
+            js_log("INCONSISTENCY: vx1_o = {d:.4}, vx1_n = {d:.4}, diff = {}", .{vx1_o, vx1_n, vx1_n-vx1_o} );
+        if (fabs(vy1_o - vy1_n) > eps)
+            js_log("INCONSISTENCY: vy1_o = {d:.4}, vy1_n = {d:.4}, diff = {}", .{vy1_o, vy1_n, vy1_n-vy1_o} );
+        if (fabs(vx2_o - vx2_n) > eps)
+            js_log("INCONSISTENCY: vx2_o = {d:.4}, vx2_n = {d:.4}, diff = {}", .{vx2_o, vx2_n, vx2_n-vx2_o} );
+        if (fabs(vy2_o - vy2_n) > eps)
+            js_log("INCONSISTENCY: vy2_o = {d:.4}, vy2_n = {d:.4}, diff = {}", .{vy2_o, vy2_n, vy2_n-vy2_o} );
+    }
+
+    if (r_o) {
+        t.* = t_o;
+        vx1.* = vx1_o;
+        vy1.* = vy1_o;
+        vx2.* = vx2_o;
+        vy2.* = vy2_o;
+    }
+
+    return r_o;
+}
+
+fn ball_x_ball_old(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
     const x = b1.x - b2.x;
     const vx = b1.vx - b2.vx;
     const y = b1.y - b2.y;
@@ -367,6 +415,75 @@ fn ball_x_ball(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2
     vy1.* = z1 * @sin(f) / m + v1 * @sin(p1 - f) * @sin(f + PI / 2);
     vx2.* = z2 * @cos(f) / m + v2 * @sin(p2 - f) * @cos(f + PI / 2);
     vy2.* = z2 * @sin(f) / m + v2 * @sin(p2 - f) * @sin(f + PI / 2);
+
+    //js_log("{} x {} returns {}", .{b1, b2, t_});
+    return true;
+}
+
+fn ball_x_ball_new(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2: *f32) bool {
+    const x = b1.x - b2.x;
+    const vx = b1.vx - b2.vx;
+    const y = b1.y - b2.y;
+    const vy = b1.vy - b2.vy;
+    const r2 = (b1.r + b2.r) * (b1.r + b2.r);
+    const de = vx * vx + vy * vy;
+    const d = 2 * x * y * vx * vy + r2 * de - x * x * vy * vy - y * y * vx * vx;
+
+    if (vx > -teps and vx < teps and vy > -teps and vy < teps)
+        return false;
+
+    if (d < 0)
+        return false;
+
+    const sd = @sqrt(d);
+    const t1 = -(sd + x * vx + y * vy) / de;
+    const t2 = (sd - x * vx - y * vy) / de;
+
+    if (t1 <= teps and t2 <= teps)
+        return false;
+
+    const t_ = if (t1 <= teps) t2 else if (t2 <= teps) t1 else if (t1 < t2) t1 else t2;
+    if (t_ >= t.*)
+        return false;
+
+    const x1 = b1.x + t_ * b1.vx;
+    const y1 = b1.y + t_ * b1.vy;
+    const x2 = b2.x + t_ * b2.vx;
+    const y2 = b2.y + t_ * b2.vy;
+    const v1 = @sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
+    const v2 = @sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
+    const m = b1.m + b2.m;
+
+    // Based on: https://williamecraver.wixsite.com/elastic-equations
+    // See also: https://www.real-world-physics-problems.com/elastic-collision.html
+    //const p1 = atan2(b1.vy, b1.vx);
+    const p1_d = @sqrt(b1.vy*b1.vy + b1.vx*b1.vx);
+    const p1_sin = b1.vy/p1_d;
+    const p1_cos = b1.vx/p1_d;
+
+    //const p2 = atan2(b2.vy, b2.vx);
+    const p2_d = @sqrt(b2.vy*b2.vy + b2.vx*b2.vx);
+    const p2_sin = b2.vy/p2_d;
+    const p2_cos = b2.vx/p2_d;
+
+    //const f = atan2(y2 - y1, x2 - x1);
+    const f_d = @sqrt((y2 - y1)*(y2 - y1) + (x2 - x1)*(x2 - x1));
+    const f_sin = (y2 - y1)/f_d;
+    const f_cos = (x2 - x1)/f_d;
+
+    const p1f_cos = p1_cos*f_cos + p1_sin*f_sin; // cos(p1 - f) = cos(p1)cos(f) + sin(p1)sin(f)
+    const p1f_sin = p1_sin*f_cos - p1_cos*f_sin; // sin(p1 - f) = sin(p1)cos(f) - cos(p1)sin(f)
+    const p2f_cos = p2_cos*f_cos + p2_sin*f_sin; // cos(p2 - f) = cos(p2)cos(f) + sin(p2)sin(f)
+    const p2f_sin = p2_sin*f_cos - p2_cos*f_sin; // sin(p2 - f) = sin(p2)cos(f) - cos(p2)sin(f)
+
+    const z1 = v1 * p1f_cos * (b1.m - b2.m) + 2 * b2.m * v2 * p2f_cos;
+    const z2 = v2 * p2f_cos * (b2.m - b1.m) + 2 * b1.m * v1 * p1f_cos;
+
+    t.* = t_;
+    vx1.* = z1 * f_cos / m - v1 * p1f_sin * f_sin;
+    vy1.* = z1 * f_sin / m + v1 * p1f_sin * f_cos;
+    vx2.* = z2 * f_cos / m - v2 * p2f_sin * f_sin;
+    vy2.* = z2 * f_sin / m + v2 * p2f_sin * f_cos;
 
     //js_log("{} x {} returns {}", .{b1, b2, t_});
     return true;
