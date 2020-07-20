@@ -43,6 +43,8 @@ class Application implements App {
                     b.active = active != 0;
                     if (b.active)
                         canvas.draw_ball(b, this.ctx!);
+                    if (!b.active)
+                        console.log(`Ball ${b.n} removed`);
                 }
             },
             // some black magic
@@ -95,7 +97,13 @@ class Application implements App {
                 n_mov ++;
 
         //n_mov = 0;
-        if (n_mov == 0) {
+        if (!this.cue().active) {
+            console.log("cue deactivated");
+            canvas.message("You lost!\nClick anywhere to restart...", 250, 60, () => {
+                app.update_geometry();
+            });
+        }
+        else if (n_mov == 0) {
             console.log("Movement stopped");
         }
         else {
@@ -217,4 +225,3 @@ app.update_geometry();
 init.setup_canvas_resize (app);
 init.setup_win_resize (app);
 canvas.init(app);
-
