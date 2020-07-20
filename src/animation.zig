@@ -1,4 +1,5 @@
 const std = @import("std");
+const std_enabled = true;
 
 extern fn js_log_char(arg: u8) void;
 
@@ -7,7 +8,7 @@ const teps = 1.0e-5;
 fn js_log(comptime fmt: []const u8, args: var) void {
     var _buf: [200]u8 = undefined;
     const buf = _buf[0..];
-    const s = std.fmt.bufPrint(buf, fmt, args) catch "error(js_log)";
+    const s = if (std_enabled) std.fmt.bufPrint(buf, fmt, args) catch "error(js_log)" else "N/A";
     for (s) |c| {
         js_log_char(c);
     }
@@ -57,6 +58,7 @@ var Nl: u8 = 0;
 var points: [20]Point = undefined;
 var Np: u8 = 0;
 var bb: Box = undefined;
+var decel :f32 = 20;
 
 export fn add_ball(x: f32, y: f32, vx: f32, vy: f32, r: f32, m: f32) void {
     const ball = Ball{
@@ -93,6 +95,11 @@ export fn reset() void {
     Np = 0;
 }
 
+export fn set_decel(_decel: f32) void {
+    decel = _decel;
+    js_log("decel = {d:.2}", .{decel});
+}
+
 extern fn ball_status(idx: i32, active: i32, x: f32, y: f32, vx: f32, vy: f32) void;
 
 var rcnt: i32 = 0;
@@ -108,8 +115,6 @@ export fn run(interval: f32) void {
     }
     //js_log("[{}] Run OUT", .{rcnt});
 }
-
-const decel = 20;
 
 fn make_step(interval: f32) void {
     var ii: usize = 0;
@@ -196,16 +201,6 @@ fn make_step(interval: f32) void {
                 balls[ii_].vx = vxi;
                 balls[ii_].vy = vyi;
                 balls[ii_].moving = true;
-
-                // // FIXME
-                // var kk: usize = 0;
-                // while (kk < Nb) : (kk += 1) {
-                //     balls[kk].moving = false;
-                //     balls[kk].vx = 0;
-                //     balls[kk].vy = 0;
-                // }
-                // js_log("Hit break!", .{});
-                // break; // FIXME
             }
         } else
             break;
@@ -349,31 +344,29 @@ fn ball_x_ball(b1: Ball, b2: Ball, t: *f32, vx1: *f32, vy1: *f32, vx2: *f32, vy2
     const y1 = b1.y + t_ * b1.vy;
     const x2 = b2.x + t_ * b2.vx;
     const y2 = b2.y + t_ * b2.vy;
-    //const v1 = @sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
-    //const v2 = @sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
     const m = b1.m + b2.m;
 
     // Based on: https://williamecraver.wixsite.com/elastic-equations
     // See also: https://www.real-world-physics-problems.com/elastic-collision.html
     //const p1 = atan2(b1.vy, b1.vx);
-    const v1 = @sqrt(b1.vy*b1.vy + b1.vx*b1.vx);
-    const p1_sin = if (v1 > veps) b1.vy/v1 else 0;
-    const p1_cos = if (v1 > veps) b1.vx/v1 else 1;
+    const v1 = @sqrt(b1.vy * b1.vy + b1.vx * b1.vx);
+    const p1_sin = if (v1 > veps) b1.vy / v1 else 0;
+    const p1_cos = if (v1 > veps) b1.vx / v1 else 1;
 
     //const p2 = atan2(b2.vy, b2.vx);
-    const v2 = @sqrt(b2.vy*b2.vy + b2.vx*b2.vx);
-    const p2_sin = if (v2 > veps) b2.vy/v2 else 0;
-    const p2_cos = if (v2 > veps) b2.vx/v2 else 1;
+    const v2 = @sqrt(b2.vy * b2.vy + b2.vx * b2.vx);
+    const p2_sin = if (v2 > veps) b2.vy / v2 else 0;
+    const p2_cos = if (v2 > veps) b2.vx / v2 else 1;
 
     //const f = atan2(y2 - y1, x2 - x1);
-    const f_d = @sqrt((y2 - y1)*(y2 - y1) + (x2 - x1)*(x2 - x1));
-    const f_sin = (y2 - y1)/f_d;
-    const f_cos = (x2 - x1)/f_d;
+    const f_d = @sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
+    const f_sin = (y2 - y1) / f_d;
+    const f_cos = (x2 - x1) / f_d;
 
-    const p1f_cos = p1_cos*f_cos + p1_sin*f_sin; // cos(p1 - f) = cos(p1)cos(f) + sin(p1)sin(f)
-    const p1f_sin = p1_sin*f_cos - p1_cos*f_sin; // sin(p1 - f) = sin(p1)cos(f) - cos(p1)sin(f)
-    const p2f_cos = p2_cos*f_cos + p2_sin*f_sin; // cos(p2 - f) = cos(p2)cos(f) + sin(p2)sin(f)
-    const p2f_sin = p2_sin*f_cos - p2_cos*f_sin; // sin(p2 - f) = sin(p2)cos(f) - cos(p2)sin(f)
+    const p1f_cos = p1_cos * f_cos + p1_sin * f_sin; // cos(p1 - f) = cos(p1)cos(f) + sin(p1)sin(f)
+    const p1f_sin = p1_sin * f_cos - p1_cos * f_sin; // sin(p1 - f) = sin(p1)cos(f) - cos(p1)sin(f)
+    const p2f_cos = p2_cos * f_cos + p2_sin * f_sin; // cos(p2 - f) = cos(p2)cos(f) + sin(p2)sin(f)
+    const p2f_sin = p2_sin * f_cos - p2_cos * f_sin; // sin(p2 - f) = sin(p2)cos(f) - cos(p2)sin(f)
 
     const z1 = v1 * p1f_cos * (b1.m - b2.m) + 2 * b2.m * v2 * p2f_cos;
     const z2 = v2 * p2f_cos * (b2.m - b1.m) + 2 * b1.m * v1 * p1f_cos;
