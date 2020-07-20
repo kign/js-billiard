@@ -8,15 +8,22 @@ interface Circle {
 	readonly r: number
 };
 
+let canvas_click_action: () => void;
+let p_canvas_click_action = false;
+
 export function init (app: App):void {
 	let cue_highlighted = false;
 	let targeting = false;
+
 	html.canvas.addEventListener("mousemove", event => {
 		const b = app.cue();
 		const x = event.offsetX, y = event.offsetY;
 		const hcol = Color.rgb(100, 100, 100);
 
-		if (targeting) {
+		if (Math.abs(b.vx) + Math.abs(b.vy) > 1.0e-4) {
+			// do nothing
+		}
+		else if (targeting) {
 			const ctx = html.canvas.getContext('2d')!;
 
 			clear(ctx);
@@ -43,6 +50,15 @@ export function init (app: App):void {
 			}
 		}
 	});
+
+	html.canvas.addEventListener("click", event => {
+		console.log("Canvas click");
+		if (p_canvas_click_action) {
+			canvas_click_action ();
+			p_canvas_click_action = false;
+		}
+	});
+
 
 	html.canvas.addEventListener("mousedown", event => {
 		const b = app.cue();
@@ -77,7 +93,6 @@ export function init (app: App):void {
 			app.paint_balls();
 		}
 	});
-
 }
 
 export function draw_border(app: App) {
@@ -169,5 +184,36 @@ function common_tangents(a: Circle, b: Circle, ctx: CanvasRenderingContext2D) :v
 	ctx.moveTo(a.x + a.r * Math.cos(p2), a.y + a.r * Math.sin(p2));
 	ctx.lineTo(b.x + b.r * Math.cos(p2), b.y + b.r * Math.sin(p2));
 	ctx.stroke();
+}
 
+export function message(msg: string, widht: number, height: number, action: () => void) :void {
+	const fsize = 20;
+	const fheight = fsize;
+
+	const ctx = html.canvas.getContext('2d')!;
+	const w = html.canvas.width;
+	const h = html.canvas.height;
+
+	ctx.strokeStyle = "black";
+	ctx.setLineDash([10,5]);
+	ctx.strokeRect((w - widht)/2, (h - height)/2, widht, height);
+
+	ctx.fillStyle = "white";
+	ctx.fillRect((w - widht) / 2, (h - height) / 2, widht, height);
+
+	ctx.fillStyle = "black";
+	ctx.font = "20px Times";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+
+	const msg_a = msg.split("\n");
+	const th = (msg_a.length - 1) * fheight;
+	let sh = h/2 - th/2;
+	for (let s of msg_a) {
+		ctx.fillText(s, w / 2, sh);
+		sh += fheight;
+	}
+
+	p_canvas_click_action = true;
+	canvas_click_action = action;
 }
