@@ -3,6 +3,7 @@ import {App, Geom, Ball, Iwasm} from './app';
 import * as init from './init';
 import {html} from './html';
 import * as canvas from './canvas';
+import { Config } from './config';
 
 class Application implements App {
     public g?: Geom;
@@ -11,9 +12,12 @@ class Application implements App {
     private ctx?: CanvasRenderingContext2D;
     private bg: Color = Color.rgb(255,255,255);
     private interval = 0.1;
+    private config: Config;
 
     public constructor() {
         this.load_wasm ();
+
+        this.config = new Config();
     }
 
     public load_wasm() :void {
@@ -31,14 +35,14 @@ class Application implements App {
                 ball_status: (idx: number, active: number, x: number, y: number, vx: number, vy: number) => {
                     //console.log("ball_status", idx, active, x, y, vx, vy);
                     const b = this.balls![idx];
-                    canvas.draw_ball(b, idx, this.ctx!, this.bg);
+                    canvas.draw_ball(b, this.ctx!, this.bg);
                     b.x = x;
                     b.y = y;
                     b.vx = vx;
                     b.vy = vy;
                     b.active = active != 0;
                     if (b.active)
-                        canvas.draw_ball(b, idx, this.ctx!);
+                        canvas.draw_ball(b, this.ctx!);
                 }
             },
             // some black magic
@@ -56,18 +60,26 @@ class Application implements App {
             });
     }
 
-    public update_geometry(g: Geom) {
-        this.g = g;
-        this.balls = position_balls(g.W, g.H);
-        this.ctx = html.canvas.getContext('2d')!;
+    public init_all() : void {
+        this.config.init ();
     }
 
-    public draw_balls(): void {
+    public update_geometry(): void {
+        html.canvas.width = window.innerWidth - 20;
+
+        this.g = make_geom ();
+        this.balls = position_balls(this.g.W, this.g.H);
+        this.ctx = html.canvas.getContext('2d')!;
+        canvas.draw_border(app);
+        app.paint_balls();
+    }
+
+    public paint_balls(): void {
         const ctx = html.canvas.getContext('2d')!;
 
         for (let ii = 0; ii < this.balls!.length; ii ++)
             if (this.balls![ii].active)
-                canvas.draw_ball(this.balls![ii], ii, ctx);   
+                canvas.draw_ball(this.balls![ii], ctx);   
     }
 
     public cue() {
@@ -99,12 +111,8 @@ class Application implements App {
     }
 
     public run(vx: number, vy: number): void {
-        this.cue().vx = vx;
-        this.cue().vy = vy;
-
-        // FIXME!!!
-        //this.cue().vx = 171.25;
-        //this.cue().vy = -115;
+        this.cue().vx = this.config.speed * vx;
+        this.cue().vy = this.config.speed * vy;
 
         for (let ii = this.balls!.length - 1; ii >= 0; ii --)
             if (!this.balls![ii].active)
@@ -113,6 +121,8 @@ class Application implements App {
         const wasm = this.wasm!;
         const g = this.g!;
         wasm.reset ();
+        wasm.set_decel(this.config.decel);
+
         for (let b of this.balls!)
             wasm.add_ball(b.x, b.y, b.vx, b.vy, b.r, b.m);
         wasm.set_boundary_box(g.offset, g.W - g.offset, g.offset, g.H - g.offset);
@@ -141,7 +151,7 @@ function position_balls(W: number, H: number): Ball[] {
     // https://en.wikipedia.org/wiki/Pool_(cue_sports)
 
     const b = {r: 20, m: 1, vx: 0, vy: 0, active: true};
-    const gap = 20;
+    const gap = 10;
     const side = 8 * b.r + 4 * gap;
 
     const x1 = 2/3*W;
@@ -166,29 +176,45 @@ function position_balls(W: number, H: number): Ball[] {
         v1 * c1.blue()  + v2 * c2.blue()  + v3 * c3.blue()
     );
 
-    return [{...b, x: 1/4*W, y: 1/2*H, c: Color.rgb(200,200,200)},
+    return [{...b, n: 0, x: 1/4*W, y: 1/2*H, c: Color.rgb(200,200,200)},
         
-            {...b, x: x1, y: y1, c: c1},
-            {...b, x: x2, y: y2, c: c2},
-            {...b, x: x3, y: y3, c: c3},
+            {...b, n: 1, x: x1, y: y1, c: c1},
+            {...b, n: 2, x: x2, y: y2, c: c2},
+            {...b, n: 3, x: x3, y: y3, c: c3},
 
-            {...b, x: 3/4*x1+1/4*x2, y: 3/4*y1+1/4*y2, c: m2(3/4,c1,1/4,c2)},
-            {...b, x: 1/2*x1+1/2*x2, y: 1/2*y1+1/2*y2, c: m2(1/2,c1,1/4,c2)},
-            {...b, x: 1/4*x1+3/4*x2, y: 1/4*y1+3/4*y2, c: m2(1/4,c1,4/4,c2)},
-            {...b, x: 3/4*x2+1/4*x3, y: 3/4*y2+1/4*y3, c: m2(3/4,c2,1/4,c3)},
-            {...b, x: 1/2*x2+1/2*x3, y: 1/2*y2+1/2*y3, c: m2(1/2,c2,1/4,c3)},
-            {...b, x: 1/4*x2+3/4*x3, y: 1/4*y2+3/4*y3, c: m2(1/4,c2,4/4,c3)},
-            {...b, x: 3/4*x3+1/4*x1, y: 3/4*y3+1/4*y1, c: m2(3/4,c3,1/4,c1)},
-            {...b, x: 1/2*x3+1/2*x1, y: 1/2*y3+1/2*y1, c: m2(1/2,c3,1/4,c1)},
-            {...b, x: 1/4*x3+3/4*x1, y: 1/4*y3+3/4*y1, c: m2(1/4,c3,4/4,c1)},
+            {...b, n: 4, x: 3/4*x1+1/4*x2, y: 3/4*y1+1/4*y2, c: m2(3/4,c1,1/4,c2)},
+            {...b, n: 5, x: 1/2*x1+1/2*x2, y: 1/2*y1+1/2*y2, c: m2(1/2,c1,1/4,c2)},
+            {...b, n: 6, x: 1/4*x1+3/4*x2, y: 1/4*y1+3/4*y2, c: m2(1/4,c1,4/4,c2)},
+            {...b, n: 7, x: 3/4*x2+1/4*x3, y: 3/4*y2+1/4*y3, c: m2(3/4,c2,1/4,c3)},
+            {...b, n: 8, x: 1/2*x2+1/2*x3, y: 1/2*y2+1/2*y3, c: m2(1/2,c2,1/4,c3)},
+            {...b, n: 9, x: 1/4*x2+3/4*x3, y: 1/4*y2+3/4*y3, c: m2(1/4,c2,4/4,c3)},
+            {...b, n: 10, x: 3/4*x3+1/4*x1, y: 3/4*y3+1/4*y1, c: m2(3/4,c3,1/4,c1)},
+            {...b, n: 11, x: 1/2*x3+1/2*x1, y: 1/2*y3+1/2*y1, c: m2(1/2,c3,1/4,c1)},
+            {...b, n: 12, x: 1/4*x3+3/4*x1, y: 1/4*y3+3/4*y1, c: m2(1/4,c3,4/4,c1)},
 
-            {...b, x: 1/2*x1+1/4*x2+1/4*x3, y: 1/2*y1+1/4*y2+1/4*y3, c: m3(1/2,c1,1/4,c2,1/4,c3)},
-            {...b, x: 1/2*x2+1/4*x3+1/4*x1, y: 1/2*y2+1/4*y3+1/4*y1, c: m3(1/2,c2,1/4,c3,1/4,c1)},
-            {...b, x: 1/2*x3+1/4*x1+1/4*x2, y: 1/2*y3+1/4*y1+1/4*y2, c: m3(1/2,c3,1/4,c1,1/4,c2)}];
+            {...b, n: 13, x: 1/2*x1+1/4*x2+1/4*x3, y: 1/2*y1+1/4*y2+1/4*y3, c: m3(1/2,c1,1/4,c2,1/4,c3)},
+            {...b, n: 14, x: 1/2*x2+1/4*x3+1/4*x1, y: 1/2*y2+1/4*y3+1/4*y1, c: m3(1/2,c2,1/4,c3,1/4,c1)},
+            {...b, n: 15, x: 1/2*x3+1/4*x1+1/4*x2, y: 1/2*y3+1/4*y1+1/4*y2, c: m3(1/2,c3,1/4,c1,1/4,c2)}];
+}
+
+function make_geom() {
+    const w = html.canvas.getBoundingClientRect().width;
+    const h = html.canvas.height;
+    return {
+        W: w,
+        H: h,
+        round: 50,
+        offset: 10,
+        middle: h < 0.75 * w
+    };
 }
 
 const app = new Application();
 
-init.init (app);
+app.init_all ();
+app.update_geometry();
+
+init.setup_canvas_resize (app);
+init.setup_win_resize (app);
 canvas.init(app);
 
