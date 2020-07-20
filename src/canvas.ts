@@ -9,20 +9,20 @@ interface Circle {
 };
 
 export function init (app: App):void {
-	var cue_highlighted = false;
-	var targeting = false;
+	let cue_highlighted = false;
+	let targeting = false;
 	html.canvas.addEventListener("mousemove", event => {
 		const b = app.cue();
 		const x = event.offsetX, y = event.offsetY;
 		const hcol = Color.rgb(100, 100, 100);
-		
+
 		if (targeting) {
 			const ctx = html.canvas.getContext('2d')!;
 
 			clear(ctx);
-			draw_border(app, ctx);
-			app.draw_balls();
-			draw_ball(b, 0, ctx, hcol);
+			draw_border(app);
+			app.paint_balls();
+			draw_ball(b, ctx, hcol);
 
 			const v : Circle = { x: x, y: y, r: 0.5 * b.r };
 
@@ -38,7 +38,7 @@ export function init (app: App):void {
 			const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
 			if (ch != cue_highlighted) {
 				const ctx = html.canvas.getContext('2d')!;
-				draw_ball(b, 0, ctx, ch?hcol:undefined);
+				draw_ball(b, ctx, ch?hcol:undefined);
 				cue_highlighted = ch;
 			}
 		}
@@ -61,8 +61,8 @@ export function init (app: App):void {
 
 			const ctx = html.canvas.getContext('2d')!;
 			clear(ctx);
-			draw_border(app, ctx);
-			app.draw_balls();
+			draw_border(app);
+			app.paint_balls();
 			app.run(b.x - x, b.y - y);
 		}
 	});
@@ -73,15 +73,16 @@ export function init (app: App):void {
 
 			const ctx = html.canvas.getContext('2d')!;
 			clear(ctx);
-			draw_border(app, ctx);
-			app.draw_balls();
+			draw_border(app);
+			app.paint_balls();
 		}
 	});
 
 }
 
-export function draw_border(app: App, ctx: CanvasRenderingContext2D) {
+export function draw_border(app: App) {
 	const g = app.g!;
+	const ctx = html.canvas.getContext('2d')!;
 
 	ctx.strokeStyle = "#101080";
 	ctx.setLineDash([]);
@@ -129,15 +130,20 @@ export function draw_border(app: App, ctx: CanvasRenderingContext2D) {
 	ctx.stroke();
 }
 
-export function draw_ball(b: Ball, n: number, ctx: CanvasRenderingContext2D, c?: Color) :void {
+export function draw_ball(b: Ball, ctx: CanvasRenderingContext2D, c?: Color) :void {
 	ctx.fillStyle = (c || b.c).string();
 	ctx.beginPath();
-	ctx.arc(b.x, b.y, b.r, 0, 2 * Math.PI);
+	// if we override default color, we interpret it to mean all image must be erased
+	// to accomplish this, we need to slightly adjust radius
+	ctx.arc(b.x, b.y, b.r + ((c == undefined)?0:1), 0, 2 * Math.PI);
 	ctx.fill();
-	if (c == undefined && n > 0) {
-		ctx.fillStyle = Color.rgb(255 - (c || b.c).red(), 255 - (c || b.c).green(), 255 - (c || b.c).blue()).string();
-		ctx.font = b.r + "px Arial";
-		ctx.fillText(n.toString(), b.x - b.r/2, b.y + b.r/3);
+	if (c == undefined && b.n > 0) {
+		ctx.fillStyle = "white";
+		const fsize = Math.floor(0.67 * b.r);
+		ctx.font = fsize + "px Arial";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(b.n.toString(), b.x, b.y);
 	}
 }
 
