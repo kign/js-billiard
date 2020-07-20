@@ -1,6 +1,12 @@
 <!doctype html>
 <html>
   <head>
+    <style>
+td {
+  padding: 5px;
+  text-align: left;
+}
+    </style>
   	<meta charset="utf-8"/>
     <title><%= htmlWebpackPlugin.options.title %></title>
   </head>
@@ -11,5 +17,17 @@
   <div id="slider" style="cursor: row-resize; position: relative; top: -20px; padding-top: 5px; padding-bottom: 5px;">
     <hr />
   </div>
+  <form name="main">
+    <table>
+      <tr>
+        <td>Deceleration</td>
+        <td><input id="decel" type="number"></td>
+      </tr>
+      <tr>
+        <td>Speed Adjustment</td>
+        <td><input id="speed" type="number"></td>
+      </tr>
+    </table>
+  </form>
   </body>
 </html>
