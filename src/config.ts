@@ -5,8 +5,8 @@ export class Config {
     public speed: number;
 
     public constructor() {
-        this.decel = 15;
-        this.speed = 1;
+        this.decel = 20;
+        this.speed = 1.5;
     }
 
     public init () : void {
@@ -17,8 +17,6 @@ export class Config {
     private toui () : void {
         html.decel.value = this.decel.toString();
         html.speed.value = this.speed.toString();
-
-        console.log("html.decel.value =", html.decel.value);
     }
 
     private fromui () : void {
