@@ -39,7 +39,6 @@ export function init (app: App):void {
 			ctx.fill();
 
 			common_tangents(v, b, ctx);
-
 		}
 		else {
 			const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
@@ -52,7 +51,6 @@ export function init (app: App):void {
 	});
 
 	html.canvas.addEventListener("click", event => {
-		console.log("Canvas click");
 		if (p_canvas_click_action) {
 			canvas_click_action ();
 			p_canvas_click_action = false;
@@ -66,6 +64,7 @@ export function init (app: App):void {
 		const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
 		if (cue_highlighted) {
 			targeting = true;
+			cue_highlighted = false;
 		}
 	});
 
