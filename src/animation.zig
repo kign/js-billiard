@@ -1,18 +1,20 @@
 const std = @import("std");
-const std_enabled = true;
+const std_enabled = false;
 
 extern fn js_log_char(arg: u8) void;
 
 const teps = 1.0e-5;
 
 fn js_log(comptime fmt: []const u8, args: var) void {
-    var _buf: [200]u8 = undefined;
-    const buf = _buf[0..];
-    const s = if (std_enabled) std.fmt.bufPrint(buf, fmt, args) catch "error(js_log)" else "N/A";
-    for (s) |c| {
-        js_log_char(c);
+    if (std_enabled) {
+        var _buf: [200]u8 = undefined;
+        const buf = _buf[0..];
+        const s = std.fmt.bufPrint(buf, fmt, args) catch "error(js_log)";
+        for (s) |c| {
+            js_log_char(c);
+        }
+        js_log_char(0);
     }
-    js_log_char(0);
 }
 
 var _buf1: [100]u8 = undefined;
@@ -97,7 +99,7 @@ export fn reset() void {
 
 export fn set_decel(_decel: f32) void {
     decel = _decel;
-    js_log("decel = {d:.2}", .{decel});
+    //js_log("decel = {d:.2}", .{decel});
 }
 
 extern fn ball_status(idx: i32, active: i32, x: f32, y: f32, vx: f32, vy: f32) void;
