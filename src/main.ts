@@ -13,10 +13,10 @@ class Application implements App {
     private bg: Color = Color.rgb(255,255,255);
     private interval = 0.1;
     private config: Config;
+    private generation: number = 0;
 
     public constructor() {
         this.load_wasm ();
-
         this.config = new Config();
     }
 
@@ -35,16 +35,18 @@ class Application implements App {
                 ball_status: (idx: number, active: number, x: number, y: number, vx: number, vy: number) => {
                     //console.log("ball_status", idx, active, x, y, vx, vy);
                     const b = this.balls![idx];
-                    canvas.draw_ball(b, this.ctx!, this.bg);
-                    b.x = x;
-                    b.y = y;
-                    b.vx = vx;
-                    b.vy = vy;
-                    b.active = active != 0;
-                    if (b.active)
-                        canvas.draw_ball(b, this.ctx!);
-                    if (!b.active)
-                        console.log(`Ball ${b.n} removed`);
+                    if (Math.abs(b.x - x) + Math.abs(b.y - y) > 1.0e-4) {
+                        canvas.draw_ball(b, this.ctx!, this.bg);
+                        b.x = x;
+                        b.y = y;
+                        b.vx = vx;
+                        b.vy = vy;
+                        if (b.active && active == 0)
+                            console.log(`Ball ${b.n} removed`);
+                        b.active = active != 0;
+                        if (b.active)
+                            canvas.draw_ball(b, this.ctx!);
+                    }
                 }
             },
             // some black magic
@@ -74,6 +76,7 @@ class Application implements App {
         this.ctx = html.canvas.getContext('2d')!;
         canvas.draw_border(app);
         app.paint_balls();
+        this.generation = 0;
     }
 
     public paint_balls(): void {
@@ -88,18 +91,32 @@ class Application implements App {
         return this.balls![0];
     }
 
-    private move() {
+    private move(gen: number) :void {
+        if (gen != this.generation) {
+            console.log("Outdated generation", gen, "vs current", this.generation);
+            return;
+        }
         const t0 = Date.now() / 1000;
         this.wasm!.run(this.interval);
         let n_mov = 0;
-        for (let b of this.balls!) 
-            if (b.active && (b.vx != 0 || b.vy != 0))
-                n_mov ++;
+        let n_act = 0;
+        for (let b of this.balls!) {
+            if (b.active) {
+                n_act ++;
+                if (b.vx != 0 || b.vy != 0)
+                    n_mov ++;
+            }
+        }
 
         //n_mov = 0;
-        if (!this.cue().active) {
-            console.log("cue deactivated");
+        if (!this.cue().active && n_act > 0) {
+            //console.log("cue deactivated");
             canvas.message("You lost!\nClick anywhere to restart...", 250, 60, () => {
+                app.update_geometry();
+            });
+        }
+        else if (n_act <= 1) {
+            canvas.message("You WON!!!\nClick anywhere to restart...", 250, 60, () => {
                 app.update_geometry();
             });
         }
@@ -111,11 +128,10 @@ class Application implements App {
             const dt = Date.now() / 1000 - t0;
             //console.log("Time spent in wasm:", dt);
             if (dt < this.interval) 
-                window.setTimeout(() => this.move(), 1000*(this.interval - dt));
+                window.setTimeout(() => this.move(gen), 1000*(this.interval - dt));
             else
-                this.move ();
+                this.move (gen);
         }
-
     }
 
     public run(vx: number, vy: number): void {
@@ -150,7 +166,8 @@ class Application implements App {
         }
         //console.log("Initiating run(" + vx + "," + vy + ")");
 
-        this.move ();
+        this.generation ++;
+        this.move(this.generation);
     }
 }
 
