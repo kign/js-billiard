@@ -58,21 +58,37 @@ class Application implements App {
 
         // Safari doesn't support instantiateStreaming
         const wasm_src = 'animation.wasm';
-        fetch(wasm_src).then(response =>
-            response.arrayBuffer()
+        fetch(wasm_src).then(response => {
+            if (response.status != 200)
+                throw `File ${wasm_src} returned status ${response.status}`;
+            return response.arrayBuffer()
+        }
         ).then(bytes =>
             WebAssembly.instantiate(bytes, importObject)
         ).then(m => {
             this.wasm = m.instance.exports as unknown as Iwasm;
             console.log("Loaded", wasm_src);        
-        });
+        }).catch(error => 
+            window.setTimeout(() => 
+            canvas.message(`Webassembly failed to load\n${error}\nClick anywhere to reload`, 350, 80, () =>
+            window.location.reload()), 250));
     }
 
     public init_all() : void {
         this.config.init ();
     }
 
-    public update_geometry(): void {
+    public reset(height_delta: number) : void {
+        if (this.generation > 0) {
+            if (!confirm("You sure you want to restart?"))
+                return;
+        }
+
+        html.canvas.height += height_delta;
+        this.update_geometry ();
+    }
+
+    private update_geometry(): void {
         html.canvas.width = window.innerWidth - 20;
 
         this.g = make_geom ();
@@ -241,7 +257,7 @@ function make_geom() {
 const app = new Application();
 
 app.init_all ();
-app.update_geometry();
+app.reset(0);
 
 init.setup_canvas_resize (app);
 init.setup_win_resize (app);
