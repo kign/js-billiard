@@ -31,6 +31,7 @@ To comple bundle with `webpack` (bundle will be generated in `dist`)
 ```bash
 npm run-script build
 zig build-lib src/animation.zig -target wasm32-wasi --output-dir dist && rm dist/*.o && chmod a-x dist/*
+cp assets/favicon.png dist
 ```
 
 [TypeScript in Webpack](https://webpack.js.org/guides/typescript/)
