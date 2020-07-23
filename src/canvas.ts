@@ -1,6 +1,6 @@
 import * as Color from 'color';
 import {App, Ball} from './app';
-import {html} from './html';
+import {html, dbglog} from './html';
 
 interface Circle {
 	readonly x: number;
@@ -10,87 +10,153 @@ interface Circle {
 
 let canvas_click_action: () => void;
 let p_canvas_click_action = false;
+const touch_last = [-1, -1];
 
 export function init (app: App):void {
 	let cue_highlighted = false;
 	let targeting = false;
 
-	html.canvas.addEventListener("mousemove", event => {
-		const b = app.cue();
-		const x = event.offsetX, y = event.offsetY;
+	const highlight = (x,y) => {
+		const cue = app.cue();
 		const hcol = Color.rgb(100, 100, 100);
 
-		if (Math.abs(b.vx) + Math.abs(b.vy) > 1.0e-4) {
-			// do nothing
-		}
-		else if (targeting) {
-			const ctx = html.canvas.getContext('2d')!;
+		if (Math.abs(cue.vx) + Math.abs(cue.vy) > 1.0e-4)
+			return;
 
+		const ch = (x - cue.x) ** 2 + (y - cue.y) ** 2 <= cue.r ** 2;
+		if (ch != cue_highlighted) {
+			const ctx = html.canvas.getContext('2d')!;
+			draw_ball(cue, ctx, ch ? hcol : undefined);
+			cue_highlighted = ch;
+
+			dbglog(`${ch?"highlight":"unhighlight"} @${x}, ${y}`);
+		}
+	}
+
+	const target = (x,y) => {
+		const ctx = html.canvas.getContext('2d')!;
+		const cue = app.cue();
+		const hcol = Color.rgb(100, 100, 100);
+
+		if (Math.abs(cue.vx) + Math.abs(cue.vy) > 1.0e-4)
+			return;
+
+		//dbglog(`Target @${x}, ${y}`);
+
+		clear(ctx);
+		draw_border(app);
+		app.paint_balls();
+		draw_ball(cue, ctx, hcol);
+
+		const v: Circle = { x: x, y: y, r: 0.5 * cue.r };
+
+		ctx.fillStyle = cue.c.string();
+		ctx.beginPath();
+		ctx.arc(x, y, v.r, 0, 2 * Math.PI);
+		ctx.fill();
+
+		common_tangents(v, cue, ctx);
+	}
+
+	const cancel = () => {
+		if (targeting) {
+			dbglog("Cancel targeting");
+
+			targeting = false;
+
+			const ctx = html.canvas.getContext('2d')!;
 			clear(ctx);
 			draw_border(app);
 			app.paint_balls();
-			draw_ball(b, ctx, hcol);
-
-			const v : Circle = { x: x, y: y, r: 0.5 * b.r };
-
-			ctx.fillStyle = b.c.string();
-			ctx.beginPath();
-			ctx.arc(x, y, v.r, 0, 2 * Math.PI);
-			ctx.fill();
-
-			common_tangents(v, b, ctx);
 		}
-		else {
-			const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
-			if (ch != cue_highlighted) {
-				const ctx = html.canvas.getContext('2d')!;
-				draw_ball(b, ctx, ch?hcol:undefined);
-				cue_highlighted = ch;
-			}
-		}
+	}
+
+	const shoot = (x,y) => {
+		dbglog(`Shoot @${x}, ${y}`);
+
+		const cue = app.cue();
+
+		const ctx = html.canvas.getContext('2d')!;
+		clear(ctx);
+		draw_border(app);
+		app.paint_balls();
+		app.run(cue.x - x, cue.y - y);
+	}
+
+	html.canvas.addEventListener("mousemove", event => {
+		//dbglog(`Move @${event.offsetX}, ${event.offsetY}`);
+		if (targeting)
+			target(event.offsetX, event.offsetY);
+		else 
+			highlight(event.offsetX, event.offsetY);
 	});
 
 	html.canvas.addEventListener("click", event => {
+		dbglog(`Click @${event.offsetX}, ${event.offsetY}`);
 		if (p_canvas_click_action) {
 			canvas_click_action ();
 			p_canvas_click_action = false;
 		}
 	});
 
-
 	html.canvas.addEventListener("mousedown", event => {
+		//dbglog(`Down @${event.offsetX}, ${event.offsetY}`);
+
 		const b = app.cue();
 		const x = event.offsetX, y = event.offsetY;
 		const ch = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.r ** 2;
 		if (cue_highlighted) {
+			dbglog(`Targeting ON @${x},${y}`);
 			targeting = true;
 			cue_highlighted = false;
 		}
 	});
 
 	html.canvas.addEventListener("mouseup", event => {
-		if (targeting) {
-			const b = app.cue();
-			const x = event.offsetX, y = event.offsetY;
-			targeting = false;
+		//dbglog(`UP @${event.offsetX}, ${event.offsetY}`);
 
-			const ctx = html.canvas.getContext('2d')!;
-			clear(ctx);
-			draw_border(app);
-			app.paint_balls();
-			app.run(b.x - x, b.y - y);
+		if (targeting) {
+			shoot(event.offsetX, event.offsetY);
+			targeting = false;
+		}
+	});
+
+	html.canvas.addEventListener("touchstart", event => {
+		const rect = html.canvas.getBoundingClientRect();
+		const x = event.targetTouches[0].pageX - rect.left;
+		const y = event.targetTouches[0].pageY - rect.top;
+
+		highlight(x, y);
+	});
+
+	html.canvas.addEventListener("touchend", event => {
+		if (cue_highlighted) {
+			shoot(touch_last[0], touch_last[1]);
+			cue_highlighted = false;
+			event.preventDefault();
+		}
+	});
+
+	html.canvas.addEventListener("touchcancel", event => {
+		cancel ();
+	});
+
+	html.canvas.addEventListener("touchmove", event => {
+		const rect = html.canvas.getBoundingClientRect();
+		const x = event.targetTouches[0].pageX - rect.left;
+		const y = event.targetTouches[0].pageY - rect.top;
+
+		touch_last[0] = x;
+		touch_last[1] = y;
+
+		if (cue_highlighted) {
+			target(x, y);
+			event.preventDefault();
 		}
 	});
 
 	html.canvas.addEventListener("mouseleave", event => {
-		if (targeting) {
-			targeting = false;
-
-			const ctx = html.canvas.getContext('2d')!;
-			clear(ctx);
-			draw_border(app);
-			app.paint_balls();
-		}
+		cancel ();
 	});
 }
 
