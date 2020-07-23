@@ -34,8 +34,9 @@ export interface App {
     readonly g?: Geom;
     readonly wasm?: Iwasm;
 
-    update_geometry():void;
     paint_balls(): void;
     cue(): Ball;
     run(vx: number, vy:number) :void;
+    reset(height_delta: number): void;
+
 }
