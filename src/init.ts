@@ -48,8 +48,7 @@ export function setup_canvas_resize (app: App) {
             html.slider.style.top = old_top;
             document.body.style.cursor = old_cursor;
 
-            html.canvas.height += (evt.screenY - event.screenY);
-            app.update_geometry();
+            app.reset(evt.screenY - event.screenY);
         };
 
         document.addEventListener("mousemove", on_move);
@@ -58,5 +57,5 @@ export function setup_canvas_resize (app: App) {
 }
 
 export function setup_win_resize(app: App): void {
-    window.addEventListener('resize', () => app.update_geometry());
+    window.addEventListener('resize', () => app.reset(0));
 }
