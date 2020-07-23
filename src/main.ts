@@ -56,12 +56,16 @@ class Application implements App {
             }
         };
 
+        // Safari doesn't support instantiateStreaming
         const wasm_src = 'animation.wasm';
-        WebAssembly.instantiateStreaming(fetch(wasm_src), importObject)
-            .then(m => {
-                this.wasm = m.instance.exports as unknown as Iwasm;
-                console.log("Loaded", wasm_src);
-            });
+        fetch(wasm_src).then(response =>
+            response.arrayBuffer()
+        ).then(bytes =>
+            WebAssembly.instantiate(bytes, importObject)
+        ).then(m => {
+            this.wasm = m.instance.exports as unknown as Iwasm;
+            console.log("Loaded", wasm_src);        
+        });
     }
 
     public init_all() : void {
