@@ -1,5 +1,13 @@
-# js-billard
-Pool table in JavaScript
+# Variation of a classical billiard game in JavaScript
+
+## Live demo
+
+[https://kign.github.io/js-billiard](https://kign.github.io/js-billiard)
+
+![Game Screenshot](https://github.com/kign/xonix/blob/main/src/net/inet_lab/xonix/public/Xonix1.png?raw=true "Game Screenshot" )
+
+
+## Installation
 
 To install all `node.js` dependencies:
 
