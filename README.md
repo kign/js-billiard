@@ -1,10 +1,13 @@
 # Variation of a classical billiard game in JavaScript
 
+Written in `TypeScript`, with elastic collision [implemented](https://github.com/kign/js-billiard/blob/master/src/animation.zig) (for performance reasons) in [Zig](https://ziglang.org/) programming language
+and compiled into Web Assembly.
+
 ## Live demo
 
 [https://kign.github.io/js-billiard](https://kign.github.io/js-billiard)
 
-![Game Screenshot](https://github.com/kign/xonix/blob/main/src/net/inet_lab/xonix/public/Xonix1.png?raw=true "Game Screenshot" )
+![Game Screenshot](https://github.com/kign/js-billiard/blob/master/assets/js-billiard.png?raw=true "Game Screenshot" )
 
 
 ## Installation
@@ -41,6 +44,7 @@ npm run-script build
 zig build-lib src/animation.zig -target wasm32-wasi --output-dir dist && rm dist/*.o && chmod a-x dist/*
 cp assets/favicon.png dist
 ```
+
 
 [TypeScript in Webpack](https://webpack.js.org/guides/typescript/)
 
